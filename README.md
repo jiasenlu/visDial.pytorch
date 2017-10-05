@@ -1,5 +1,5 @@
 # visDial.pytorch
-visual dialog model in pytorch
+Visual Dialog model in pytorch
 
 ### Introduction
 This is the pytorch implementation of our NIPS 2017 paper ["Best of Both Worlds: Transferring Knowledge from Discriminative Learning to a Generative Visual Dialog Model"](https://arxiv.org/abs/1706.01554)
@@ -29,7 +29,7 @@ If you find this code useful, please cite the following paper:
 
 To evaluate the pre-trained model on validation set, first use the script to download the feature and pre-trained model.
 ```
-python script/donwload.py --path [path_to_download]
+python script/download.py --path [path_to_download]
 ```
 After download the feature and pre-trained model, you can run the evaluation script by using following command
 
