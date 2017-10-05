@@ -31,11 +31,23 @@ To evaluate the pre-trained model on validation set, first use the script to dow
 ```
 python script/donwload.py --path [path_to_download]
 ```
-Run the evaluation code using the following script.
+After download the feature and pre-trained model, you can run the evaluation script by using following command
+
+* Evaluate the discriminative model:
 ```
-python 
+python eval/eval_D.py --save_dir [path_to_data_root] --model_path [path_to_root]/save/HCIAE-D-MLE.pth --cuda
 ```
 
+* Evaluate the MLE trained generative model:
+```
+python eval/eval_G.py --save_dir [path_to_data_root] --model_path [path_to_root]/save/HCIAE-G-MLE.pth --cuda
+```
+
+* Evaluate the DIS trained generative model:
+```
+python eval/eval_G_DIS.py --save_dir [path_to_data_root] --model_path [path_to_root]/save/HCIAE-G-DIS.pth --cuda
+```
+You will get the similar results in the paper :)
 
 ### Train a visual dialog model.
 
