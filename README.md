@@ -47,7 +47,7 @@ python eval/eval_G.py --save_dir [path_to_data_root] --model_path [path_to_root]
 ```
 python eval/eval_G_DIS.py --save_dir [path_to_data_root] --model_path [path_to_root]/save/HCIAE-G-DIS.pth --cuda
 ```
-You will get the similar results in the paper :)
+You will get the similar results as in the paper :)
 
 ### Train a visual dialog model.
 
