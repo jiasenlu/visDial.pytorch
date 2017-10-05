@@ -27,6 +27,14 @@ If you find this code useful, please cite the following paper:
 * The preprocessed feature can be found [here](https://filebox.ece.vt.edu/~jiasenlu/codeRelease/visDial.pytorch/data/)
 * The pre-trained model can be found [here](https://filebox.ece.vt.edu/~jiasenlu/codeRelease/visDial.pytorch/model/)
 
+To evaluate the pre-trained model on validation set, first use the script to download the feature and pre-trained model.
+```
+python script/donwload.py --path [path_to_download]
+```
+Run the evaluation code using the following script.
+```
+python 
+```
 
 
 ### Train a visual dialog model.
