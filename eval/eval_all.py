@@ -32,53 +32,12 @@ from misc.netG import _netG
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument('--input_img_h5', default='data/vdl_img_vgg.h5', help='path to dataset, now hdf5 file')
-parser.add_argument('--input_ques_h5', default='data/visdial_data.h5', help='path to dataset, now hdf5 file')
-parser.add_argument('--input_json', default='data/visdial_params.json', help='path to dataset, now hdf5 file')
-parser.add_argument('--outf', default='./save', help='folder to output images and model checkpoints')
-parser.add_argument('--encoder', default='QIH_G', help='what encoder to use.')
-parser.add_argument('--num_val', default=1000, help='number of image split out as validation set.')
-parser.add_argument('--update_D', action='store_true', help='whether train use the GAN loss.')
-parser.add_argument('--update_LM', action='store_true', help='whether train use the GAN loss.')
-
-#parser.add_argument('--model_path', default='save/QIH_perceptual.1-5-21/epoch_8.pth', help='folder to output images and model checkpoints')
-#parser.add_argument('--model_path', default='save/20_0.5_1_0.7.15-5-14/epoch_8.pth', help='folder to output images and model checkpoints')
-parser.add_argument('--model_path_D', default='save/D/epoch_30.pth', help='folder to output images and model checkpoints')
-parser.add_argument('--model_path_G', default='save/ALL/epoch_8.pth', help='folder to output images and model checkpoints')
-
-
-parser.add_argument('--gumble_weight', type=int, default=0.5, help='folder to output images and model checkpoints')
-parser.add_argument('--negative_sample', type=int, default=20, help='folder to output images and model checkpoints')
-parser.add_argument('--neg_batch_sample', type=int, default=30, help='folder to output images and model checkpoints')
-
-parser.add_argument('--niter', type=int, default=100, help='number of epochs to train for')
-parser.add_argument('--start_epoch', type=int, default=0, help='start of epochs to train for')
-
-parser.add_argument('--workers', type=int, help='number of data loading workers', default=5)
-parser.add_argument('--batchSize', type=int, default=100, help='input batch size')
-parser.add_argument('--eval_iter', type=int, default=1, help='number of epochs to train for')
-parser.add_argument('--save_iter', type=int, default=2, help='number of epochs to train for')
-
-parser.add_argument('--adam', action='store_true', help='Whether to use adam (default is rmsprop)')
-
-parser.add_argument('--D_lr', type=float, default=1e-4, help='learning rate for, default=0.00005')
-parser.add_argument('--G_lr', type=float, default=1e-4, help='learning rate for, default=0.00005')
-parser.add_argument('--LM_lr', type=float, default=4e-5, help='learning rate for, default=0.00005')
-parser.add_argument('--beta1', type=float, default=0.8, help='beta1 for adam. default=0.8')
-
-
+parser.add_argument('--data_dir', default='', help='folder to output images and model checkpoints')
+parser.add_argument('--input_img_h5', default='vdl_img_vgg.h5', help='')
+parser.add_argument('--input_ques_h5', default='visdial_data.h5', help='visdial_data.h5')
+parser.add_argument('--input_json', default='visdial_params.json', help='visdial_params.json')
+parser.add_argument('--model_path', default='', help='folder to output images and model checkpoints')
 parser.add_argument('--cuda'  , action='store_true', help='enables cuda')
-parser.add_argument('--ngpu'  , type=int, default=1, help='number of GPUs to use')
-parser.add_argument('--verbose'  , action='store_true', help='show the sampled caption')
-
-parser.add_argument('--hidden_size', type=int, default=512, help='input batch size')
-parser.add_argument('--model', type=str, default='LSTM', help='type of recurrent net (RNN_TANH, RNN_RELU, LSTM, GRU)')
-parser.add_argument('--ninp', type=int, default=300, help='size of word embeddings')
-parser.add_argument('--nhid', type=int, default=512, help='humber of hidden units per layer')
-parser.add_argument('--nlayers', type=int, default=1, help='number of layers')
-parser.add_argument('--dropout', type=int, default=0.5, help='number of layers')
-parser.add_argument('--clip', type=float, default=5, help='gradient clipping')
-parser.add_argument('--margin', type=float, default=2, help='number of epochs to train for')
 
 opt = parser.parse_args()
 
@@ -96,20 +55,30 @@ cudnn.benchmark = True
 if torch.cuda.is_available() and not opt.cuda:
     print("WARNING: You have a CUDA device, so you should probably run with --cuda")
 
-if opt.model_path_D != '' :
-    print("=> loading checkpoint '{}'".format(opt.model_path_D))
-    checkpoint_D = torch.load(opt.model_path_D)
-
-if opt.model_path_G != '':
-    print("=> loading checkpoint '{}'".format(opt.model_path_G))
-    checkpoint_G = torch.load(opt.model_path_G)
-
 ####################################################################################
 # Data Loader
 ####################################################################################
 
-dataset_val = dl.validate(input_img_h5=opt.input_img_h5, input_ques_h5=opt.input_ques_h5,
-                input_json=opt.input_json, negative_sample = opt.negative_sample,
+if opt.model_path != '':
+    print("=> loading checkpoint '{}'".format(opt.model_path))
+    checkpoint = torch.load(opt.model_path)
+    model_path = opt.model_path
+    data_dir = opt.data_dir
+    input_img_h5 = opt.input_img_h5
+    input_ques_h5 = opt.input_ques_h5
+    input_json = opt.input_json
+    opt = checkpoint['opt']
+    opt.start_epoch = checkpoint['epoch']
+    opt.batchSize = 5
+    opt.data_dir = data_dir
+    opt.model_path = model_path
+
+input_img_h5 = os.path.join(opt.data_dir, opt.input_img_h5)
+input_ques_h5 = os.path.join(opt.data_dir, opt.input_ques_h5)
+input_json = os.path.join(opt.data_dir, opt.input_json)
+
+dataset_val = dl.validate(input_img_h5=input_img_h5, input_ques_h5=input_ques_h5,
+                input_json=input_json, negative_sample = opt.negative_sample,
                 num_val = opt.num_val, data_split = 'test')
 
 dataloader_val = torch.utils.data.DataLoader(dataset_val, batch_size=30,
@@ -125,17 +94,6 @@ his_length = dataset_val.ans_length + dataset_val.ques_length
 itow = dataset_val.itow
 img_feat_size = 512
 
-print('init Discriminator model...')
-netE_d = _netE(opt.model, opt.ninp, opt.nhid, opt.nlayers, opt.dropout, img_feat_size)
-netW_d = model._netW(vocab_size, opt.ninp, opt.dropout)
-netD = model._netD(opt.model, opt.ninp, opt.nhid, opt.nlayers, vocab_size, opt.dropout)
-critD =model.nPairLoss(opt.ninp, opt.margin)
-
-if opt.model_path_D != '' :
-    print('Loading Discriminator model...')
-    netW_d.load_state_dict(checkpoint_D['netW'])
-    netE_d.load_state_dict(checkpoint_D['netE'])
-    netD.load_state_dict(checkpoint_D['netD'])
 
 print('init Generative model...')
 netE_g = _netE(opt.model, opt.ninp, opt.nhid, opt.nlayers, opt.dropout, img_feat_size)
@@ -153,11 +111,12 @@ if  opt.model_path_G != '':
 
 
 if opt.cuda: # ship to cuda, if has GPU
-    netW_d.cuda(), netW_g.cuda()
-    netE_d.cuda(), netE_g.cuda()
-    netD.cuda(), netG.cuda()
-    critD.cuda(), critG.cuda()
-    sampler.cuda(), critLM.cuda()
+    netW_g.cuda()
+    netE_g.cuda()
+    netG.cuda()
+    critG.cuda()
+    sampler.cuda()
+    critLM.cuda()
 
 ####################################################################################
 # training model
@@ -165,28 +124,17 @@ if opt.cuda: # ship to cuda, if has GPU
 
 def val():
     netE_g.eval()
-    netE_d.eval()
     netW_g.eval()
-    netW_d.eval()
-
     netG.eval()
-    netD.eval()
 
     n_neg = 100
     ques_hidden1 = netE_g.init_hidden(opt.batchSize)
-    ques_hidden2 = netE_d.init_hidden(opt.batchSize)
-
-    hist_hidden1 = netE_d.init_hidden(opt.batchSize)
     hist_hidden2 = netE_g.init_hidden(opt.batchSize)
-
-    opt_hidden = netD.init_hidden(opt.batchSize)
-
     data_iter_val = iter(dataloader_val)
 
     count = 0
     i = 0
     rank_G = []
-    rank_D = []
 
     while i < len(dataloader_val):
         data = data_iter_val.next()

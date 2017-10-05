@@ -9,7 +9,6 @@ import pdb
 import time
 import numpy as np
 import json
-import progressbar
 
 import torch
 import torch.nn as nn
@@ -30,7 +29,12 @@ import datetime
 import h5py
 parser = argparse.ArgumentParser()
 
-parser.add_argument('--model_path', default='save/D/epoch_30.pth', help='folder to output images and model checkpoints')
+parser.add_argument('--data_dir', default='', help='folder to output images and model checkpoints')
+parser.add_argument('--input_img_h5', default='vdl_img_vgg.h5', help='')
+parser.add_argument('--input_ques_h5', default='visdial_data.h5', help='visdial_data.h5')
+parser.add_argument('--input_json', default='visdial_params.json', help='visdial_params.json')
+
+parser.add_argument('--model_path', default='', help='folder to output images and model checkpoints')
 parser.add_argument('--cuda'  , action='store_true', help='enables cuda')
 
 opt = parser.parse_args()
@@ -55,13 +59,22 @@ if opt.model_path != '':
     print("=> loading checkpoint '{}'".format(opt.model_path))
     checkpoint = torch.load(opt.model_path)
     model_path = opt.model_path
+    data_dir = opt.data_dir
+    input_img_h5 = opt.input_img_h5
+    input_ques_h5 = opt.input_ques_h5
+    input_json = opt.input_json
     opt = checkpoint['opt']
     opt.start_epoch = checkpoint['epoch']
-    opt.model_path = model_path
     opt.batchSize = 5
+    opt.data_dir = data_dir
+    opt.model_path = model_path
 
-dataset_val = dl.validate(input_img_h5=opt.input_img_h5, input_ques_h5=opt.input_ques_h5,
-                input_json=opt.input_json, negative_sample = opt.negative_sample,
+input_img_h5 = os.path.join(opt.data_dir, opt.input_img_h5)
+input_ques_h5 = os.path.join(opt.data_dir, opt.input_ques_h5)
+input_json = os.path.join(opt.data_dir, opt.input_json)
+
+dataset_val = dl.validate(input_img_h5=input_img_h5, input_ques_h5=input_ques_h5,
+                input_json=input_json, negative_sample = opt.negative_sample,
                 num_val = opt.num_val, data_split = 'test')
 
 
@@ -88,6 +101,7 @@ if opt.model_path != '': # load the pre-trained model.
     netW.load_state_dict(checkpoint['netW'])
     netE.load_state_dict(checkpoint['netE'])
     netD.load_state_dict(checkpoint['netD'])
+    print('Loading model Success!')
 
 if opt.cuda: # ship to cuda, if has GPU
     netW.cuda(), netE.cuda(), netD.cuda()
@@ -103,7 +117,6 @@ def eval():
     netE.eval()
     netD.eval()
 
-    bar = progressbar.ProgressBar(max_value=len(dataloader_val))
     data_iter_val = iter(dataloader_val)
     ques_hidden = netE.init_hidden(opt.batchSize)
     hist_hidden = netE.init_hidden(opt.batchSize)
@@ -172,7 +185,6 @@ def eval():
             rank = count.sum(1) + 1
             rank_all_tmp += list(rank.view(-1).data.cpu().numpy())
 
-        bar.update(i)
         i += 1
 
         result_all += save_tmp
@@ -184,7 +196,6 @@ def eval():
             ave = np.sum(np.array(rank_all_tmp)) / float(len(rank_all_tmp))
             mrr = np.sum(1/(np.array(rank_all_tmp, dtype='float'))) / float(len(rank_all_tmp))
             print ('%d/%d: mrr: %f R1: %f R5 %f R10 %f Mean %f' %(1, len(dataloader_val), mrr, R1, R5, R10, ave))
-
 
     return img_atten
 

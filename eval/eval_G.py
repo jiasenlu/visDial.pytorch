@@ -9,7 +9,6 @@ import pdb
 import time
 import numpy as np
 import json
-import progressbar
 
 import torch
 import torch.nn as nn
@@ -32,7 +31,12 @@ from misc.netG import _netG
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument('--model_path', default='save/G/epoch_20.pth', help='folder to output images and model checkpoints')
+parser.add_argument('--data_dir', default='', help='folder to output images and model checkpoints')
+parser.add_argument('--input_img_h5', default='vdl_img_vgg.h5', help='')
+parser.add_argument('--input_ques_h5', default='visdial_data.h5', help='visdial_data.h5')
+parser.add_argument('--input_json', default='visdial_params.json', help='visdial_params.json')
+
+parser.add_argument('--model_path', default='', help='folder to output images and model checkpoints')
 parser.add_argument('--cuda'  , action='store_true', help='enables cuda')
 
 opt = parser.parse_args()
@@ -53,19 +57,28 @@ if opt.model_path != '':
     print("=> loading checkpoint '{}'".format(opt.model_path))
     checkpoint = torch.load(opt.model_path)
     model_path = opt.model_path
+    data_dir = opt.data_dir
+    input_img_h5 = opt.input_img_h5
+    input_ques_h5 = opt.input_ques_h5
+    input_json = opt.input_json
     opt = checkpoint['opt']
     opt.start_epoch = checkpoint['epoch']
+    opt.batchSize = 5
+    opt.data_dir = data_dir
     opt.model_path = model_path
-    opt.batchSize = 50
-
 
 ####################################################################################
 # Data Loader
 ####################################################################################
 
-dataset_val = dl.validate(input_img_h5=opt.input_img_h5, input_ques_h5=opt.input_ques_h5,
-                input_json=opt.input_json, negative_sample = opt.negative_sample,
+input_img_h5 = os.path.join(opt.data_dir, opt.input_img_h5)
+input_ques_h5 = os.path.join(opt.data_dir, opt.input_ques_h5)
+input_json = os.path.join(opt.data_dir, opt.input_json)
+
+dataset_val = dl.validate(input_img_h5=input_img_h5, input_ques_h5=input_ques_h5,
+                input_json=input_json, negative_sample = opt.negative_sample,
                 num_val = opt.num_val, data_split = 'test')
+
 
 dataloader_val = torch.utils.data.DataLoader(dataset_val, batch_size=opt.batchSize,
                                          shuffle=False, num_workers=int(opt.workers))
@@ -98,6 +111,7 @@ if opt.model_path != '':
     netW.load_state_dict(checkpoint['netW'])
     netE.load_state_dict(checkpoint['netE'])
     netG.load_state_dict(checkpoint['netG'])
+    print('Loading model Success!')
 
 def eval():
 
