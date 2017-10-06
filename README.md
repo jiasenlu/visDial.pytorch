@@ -35,17 +35,17 @@ After download the feature and pre-trained model, you can run the evaluation scr
 
 * Evaluate the discriminative model:
 ```
-python eval/eval_D.py --save_dir [path_to_data_root] --model_path [path_to_root]/save/HCIAE-D-MLE.pth --cuda
+python eval/eval_D.py --data_dir [path_to_root] --model_path [path_to_root]/save/HCIAE-D-MLE.pth --cuda
 ```
 
 * Evaluate the MLE trained generative model:
 ```
-python eval/eval_G.py --save_dir [path_to_data_root] --model_path [path_to_root]/save/HCIAE-G-MLE.pth --cuda
+python eval/eval_G.py --data_dir [path_to_root] --model_path [path_to_root]/save/HCIAE-G-MLE.pth --cuda
 ```
 
 * Evaluate the DIS trained generative model:
 ```
-python eval/eval_G_DIS.py --save_dir [path_to_data_root] --model_path [path_to_root]/save/HCIAE-G-DIS.pth --cuda
+python eval/eval_G_DIS.py --data_dir [path_to_root] --model_path [path_to_root]/save/HCIAE-G-DIS.pth --cuda
 ```
 You will get the similar results as in the paper :)
 
