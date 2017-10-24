@@ -52,7 +52,24 @@ You will get the similar results as in the paper :)
 ### Train a visual dialog model.
 
 #### Preparation
+First download the feature. from [here](https://filebox.ece.vt.edu/~jiasenlu/codeRelease/visDial.pytorch/model/)
 
 #### Training
+* Train the discriminative model:
+```
+python train/train_D.py --cuda
+```
+* Train the MLE trained generative model:
+```
+python train/train_G.py --cuda
+```
+* Train the DIS trained generative model:
+First, train or download the pretrained discriminative model or generative model, and put it under /save
+```
+python train/train_all.py --cuda --update LM
+```
+
+
+
 
 
