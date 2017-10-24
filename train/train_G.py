@@ -65,6 +65,8 @@ parser.add_argument('--dropout', type=int, default=0.5, help='number of layers')
 parser.add_argument('--clip', type=float, default=5, help='gradient clipping')
 parser.add_argument('--margin', type=float, default=2, help='number of epochs to train for')
 
+parser.add_argument('--log_interval', type=int, default=50, help='how many iterations show the log info')
+
 opt = parser.parse_args()
 print(opt)
 
@@ -153,7 +155,6 @@ def train(epoch):
 
     lr = adjust_learning_rate(optimizer, epoch, opt.lr)
     data_iter = iter(dataloader)
-    bar = progressbar.ProgressBar(max_value=len(dataloader))
 
     ques_hidden = netE.init_hidden(opt.batchSize)
     hist_hidden = netE.init_hidden(opt.batchSize)
@@ -204,10 +205,14 @@ def train(epoch):
 
             optimizer.step()
             count += 1
-
-        bar.update(i)
         i += 1
-    average_loss = average_loss / count, lr
+        if i % opt.log_interval == 0:
+            average_loss /= count
+            print("step {} / {} (epoch {}), g_loss {:.3f}, lr = {:.6f}"\
+                .format(i, len(dataloader), epoch, average_loss, lr))
+            average_loss = 0
+            count = 0
+
     return average_loss
 
 
@@ -219,8 +224,6 @@ def val():
     data_iter_val = iter(dataloader_val)
     ques_hidden = netE.init_hidden(opt.batchSize)
     hist_hidden = netE.init_hidden(opt.batchSize)
-
-    bar = progressbar.ProgressBar(max_value=len(dataloader_val))
 
     i = 0
     average_loss = 0
@@ -290,7 +293,6 @@ def val():
             rank_all_tmp += list(rank.view(-1).data.cpu().numpy())
 
         i += 1
-        bar.update(i)
 
     return rank_all_tmp, average_loss
 

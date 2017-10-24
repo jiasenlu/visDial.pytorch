@@ -2,7 +2,7 @@ import math
 
 import torch
 from torch.nn.parameter import Parameter
-
+import torch.nn.functional as F
 from torch.nn import Module
 import pdb
 
@@ -32,17 +32,8 @@ class share_Linear(Module):
         self.weight = weight.t()
         self.register_parameter('bias', None)
 
-    def reset_parameters(self):
-        stdv = 1. / math.sqrt(self.weight.size(1))
-        self.weight.data.uniform_(-stdv, stdv)
-        if self.bias is not None:
-            self.bias.data.uniform_(-stdv, stdv)
-
     def forward(self, input):
-        if self.bias is None:
-            return self._backend.Linear.apply(input, self.weight)
-        else:
-            return self._backend.Linear.apply(input, self.weight, self.bias)
+        return F.linear(input, self.weight, self.bias)
 
     def __repr__(self):
         return self.__class__.__name__ + ' (' \

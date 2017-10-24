@@ -42,7 +42,7 @@ parser.add_argument('--input_ques_h5', default='data/visdial_data.h5', help='pat
 parser.add_argument('--input_json', default='data/visdial_params.json', help='path to dataset, now json file')
 parser.add_argument('--outf', default='./save', help='folder to output model checkpoints')
 parser.add_argument('--decoder', default='D', help='what decoder to use.')
-parser.add_argument('--model_path', default='save/D/epoch_30.pth', help='folder to output images and model checkpoints')
+parser.add_argument('--model_path', default='', help='folder to output images and model checkpoints')
 parser.add_argument('--num_val', default=1000, help='number of image split out as validation set.')
 
 parser.add_argument('--niter', type=int, default=50, help='number of epochs to train for')
@@ -52,7 +52,7 @@ parser.add_argument('--start_epoch', type=int, default=1, help='start of epochs 
 parser.add_argument('--teacher_forcing', type=int, default=1, help='start of epochs to train for')
 
 parser.add_argument('--workers', type=int, help='number of data loading workers', default=6)
-parser.add_argument('--batchSize', type=int, default=1, help='input batch size')
+parser.add_argument('--batchSize', type=int, default=100, help='input batch size')
 parser.add_argument('--save_iter', type=int, default=5, help='number of epochs to train for')
 
 parser.add_argument('--adam', action='store_true', help='Whether to use adam (default is rmsprop)')
@@ -71,6 +71,7 @@ parser.add_argument('--nlayers', type=int, default=1, help='number of layers')
 parser.add_argument('--dropout', type=int, default=0.5, help='number of layers')
 parser.add_argument('--clip', type=float, default=5, help='gradient clipping')
 parser.add_argument('--margin', type=float, default=2, help='number of epochs to train for')
+parser.add_argument('--log_interval', type=int, default=50, help='how many iterations show the log info')
 
 opt = parser.parse_args()
 print(opt)
@@ -164,7 +165,6 @@ def train(epoch):
     wrong_hidden = netD.init_hidden(opt.batchSize)
 
     data_iter = iter(dataloader)
-    bar = progressbar.ProgressBar(maxval=len(dataloader))
 
     average_loss = 0
     count = 0
@@ -236,12 +236,15 @@ def train(epoch):
             optimizer.step()
             count += 1
 
-        bar.update(i)
         i += 1
+        if i % opt.log_interval == 0:
+            average_loss /= count
+            print("step {} / {} (epoch {}), g_loss {:.3f}, lr = {:.6f}"\
+                .format(i, len(dataloader), epoch, average_loss, lr))
+            average_loss = 0
+            count = 0
 
-    average_loss = average_loss / count
-
-    return average_loss, lr
+    return average_loss
 
 
 def val():
@@ -380,10 +383,10 @@ history = []
 
 for epoch in range(1, opt.niter):
 
-    #t = time.time()
-    #train_loss, lr = train(epoch)
-    #print ('Epoch: %d learningRate %4f train loss %4f Time: %3f' % (epoch, lr, train_loss, time.time()-t))
-    #train_his = {'loss': train_loss}
+    t = time.time()
+    train_loss, lr = train(epoch)
+    print ('Epoch: %d learningRate %4f train loss %4f Time: %3f' % (epoch, lr, train_loss, time.time()-t))
+    train_his = {'loss': train_loss}
 
     print('Evaluating ... ')
     rank_all = val()

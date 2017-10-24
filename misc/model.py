@@ -19,42 +19,13 @@ class _netW(nn.Module):
         initrange = 0.1
         self.word_embed.weight.data.uniform_(-initrange, initrange)
 
-    def forward(self, input, format = 'index'):
+    def forward(self, input, format ='index'):
         if format == 'onehot':
             out = F.dropout(self.Linear(input), self.d, training=self.training)
         elif format == 'index':
             out = F.dropout(self.word_embed(input), self.d, training=self.training)
 
         return out
-
-class _netD_normal(nn.Module):
-    """
-    Given the real/wrong/fake answer, use a RNN (LSTM) to embed the answer.
-    """
-    def __init__(self, rnn_type, ninp, nhid, nlayers, ntoken, dropout):
-        super(_netD_normal, self).__init__()
-
-        self.rnn_type = rnn_type
-        self.nhid = nhid
-        self.nlayers = nlayers
-        self.ntoken = ntoken
-        self.ninp = ninp
-        self.d = dropout
-        self.rnn = getattr(nn, rnn_type)(ninp, nhid, nlayers)
-        self.fc = nn.Linear(nhid, nhid)
-
-    #def forward(self, real_onehot, wrong_onehot, real_idx, wrong_idx, sampleNegIdx, featD):
-    def forward(self, input_feat, idx, hidden):
-
-        output, _ = self.rnn(input_feat, hidden)
-        #index_output = output.view(-1, self.nhid).index_select(0, idx.view(-1))
-        # add dropout here?
-        index_output = output[-1]
-        index_output = F.dropout(index_output, self.d, training=self.training)
-        #transform_output = F.dropout(F.tanh(self.fc(index_output)), 0.3, training=self.training)
-        transform_output = F.tanh(self.fc(index_output))
-
-        return transform_output
 
     def init_hidden(self, bsz):
         weight = next(self.parameters()).data
@@ -218,9 +189,9 @@ class gumbel_sampler(nn.Module):
         y_hard = y == max_val.view(-1,1).expand_as(y)
         y = (y_hard.float() - y).detach() + y
 
-        log_prob = input.gather(1, max_idx.view(-1,1)) # gather the logprobs at sampled positions
+        # log_prob = input.gather(1, max_idx.view(-1,1)) # gather the logprobs at sampled positions
 
-        return y, max_idx.view(1, -1), log_prob
+        return y, max_idx.view(1, -1)#, log_prob
 
 class AxB(nn.Module):
     def __init__(self, nhid):

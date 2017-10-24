@@ -41,10 +41,8 @@ parser.add_argument('--num_val', default=1000, help='number of image split out a
 parser.add_argument('--update_D', action='store_true', help='whether train use the GAN loss.')
 parser.add_argument('--update_LM', action='store_true', help='whether train use the GAN loss.')
 
-parser.add_argument('--model_path_D', default='save/D/epoch_30.pth', help='folder to output images and model checkpoints')
-parser.add_argument('--model_path_G', default='save/G/epoch_30.pth', help='folder to output images and model checkpoints')
-#parser.add_argument('--model_path_G', default='', help='folder to output images and model checkpoints')
-
+parser.add_argument('--model_path_D', default='save/HCIAE-D-MLE.pth', help='folder to output images and model checkpoints')
+parser.add_argument('--model_path_G', default='save/HCIAE-G-MLE.pth', help='folder to output images and model checkpoints')
 
 parser.add_argument('--negative_sample', type=int, default=20, help='folder to output images and model checkpoints')
 parser.add_argument('--neg_batch_sample', type=int, default=30, help='folder to output images and model checkpoints')
@@ -62,7 +60,7 @@ parser.add_argument('--adam', action='store_true', help='Whether to use adam (de
 parser.add_argument('--D_lr', type=float, default=5e-5, help='learning rate for, default=0.00005')
 parser.add_argument('--G_lr', type=float, default=5e-5, help='learning rate for, default=0.00005')
 parser.add_argument('--LM_lr', type=float, default=5e-5, help='learning rate for, default=0.00005')
-parser.add_argument('--beta1', type=float, default=0.8, help='beta1 for adam. default=0.8')
+parser.add_argument('--beta1', type=float, default=0.5, help='beta1 for adam. default=0.8')
 
 parser.add_argument('--cuda'  , action='store_true', help='enables cuda')
 parser.add_argument('--ngpu'  , type=int, default=1, help='number of GPUs to use')
@@ -76,7 +74,7 @@ parser.add_argument('--nlayers', type=int, default=1, help='number of layers')
 parser.add_argument('--dropout', type=int, default=0.5, help='number of layers')
 parser.add_argument('--clip', type=float, default=5, help='gradient clipping')
 parser.add_argument('--margin', type=float, default=2, help='number of epochs to train for')
-parser.add_argument('--gumble_weight', type=int, default=0.7, help='folder to output images and model checkpoints')
+parser.add_argument('--gumble_weight', type=int, default=0.5, help='folder to output images and model checkpoints')
 
 opt = parser.parse_args()
 
@@ -154,7 +152,7 @@ if opt.model_path_D != '' :
 print('init Generative model...')
 netE_g = _netE(opt.model, opt.ninp, opt.nhid, opt.nlayers, opt.dropout, img_feat_size)
 netW_g = model._netW(vocab_size, opt.ninp, opt.dropout)
-netG = _netG(opt.model, vocab_size, opt.ninp, opt.nhid, opt.nlayers, opt.dropout, vocab_size)
+netG = _netG(opt.model, vocab_size, opt.ninp, opt.nhid, opt.nlayers, opt.dropout)
 sampler = model.gumbel_sampler()
 critG = model.G_loss(opt.ninp)
 critLM = model.LMCriterion()
@@ -195,7 +193,6 @@ def train(epoch):
     wrong_hidden = netD.init_hidden(opt.batchSize)
     fake_hidden = netD.init_hidden(opt.batchSize)
 
-    bar = progressbar.ProgressBar(maxval=len(dataloader))#len(dataloader))
     data_iter = iter(dataloader)
 
     err_d = 0
@@ -302,10 +299,6 @@ def train(epoch):
             fake_onehot = torch.cat(fake_onehot, 0)
             fake_idx = torch.cat(fake_idx,0)
 
-            if i == 0 and rnd == 0:
-                fake_txt = decode_txt(itow, fake_idx.data)
-                print(fake_txt)
-
             fake_len.resize_(batch_size).fill_(ans_length-1)
             for di in range(ans_length-1, 0, -1):
                 fake_len.masked_fill_(fake_idx.data[di].eq(vocab_size), di)
@@ -322,56 +315,7 @@ def train(epoch):
             # get the fake diff mask.
             #fake_diff_mask = torch.sum(fake_idx == ans_target, 0) != 0
             fake_onehot = fake_onehot.view(-1, vocab_size+1)
-
-            # ==============
-            # Discriminator
-            # ==============
-            '''
-            if opt.update_D:
-
-                # get the encoder feature.
-                ques_emb_d = netW_d(ques_input, format = 'index')
-                his_emb_d = netW_d(his_input, format = 'index')
-
-                ques_hidden2 = repackage_hidden(ques_hidden2, batch_size)
-                hist_hidden2 = repackage_hidden(hist_hidden2, his_emb_d.size(1))
-                featD, _ = netE_d(ques_emb_d, his_emb_d, img_input, \
-                                            ques_hidden2, hist_hidden2, rnd+1)
-
-                # get the real and fake answer embedding.
-                ans_real_emb = netW_d(ans_target, format='index')
-                ans_wrong_emb = netW_d(wrong_ans_input, format='index')
-                ans_fake_emb = netW_d(fake_onehot.detach(), format='onehot') # detach here.
-                ans_fake_emb = ans_fake_emb.view(ans_length, -1, opt.ninp)
-
-                real_hidden = repackage_hidden(real_hidden, batch_size)
-                wrong_hidden = repackage_hidden(wrong_hidden, ans_wrong_emb.size(1))
-                fake_hidden = repackage_hidden(fake_hidden, batch_size)
-
-                real_feat = netD(ans_real_emb, ans_target, real_hidden, vocab_size)
-                wrong_feat = netD(ans_wrong_emb, wrong_ans_input, wrong_hidden, vocab_size)
-                fake_feat = netD(ans_fake_emb, fake_idx, fake_hidden, vocab_size)
-
-                # sample inside the batch.
-                batch_wrong_feat = wrong_feat.index_select(0, batch_sample_idx.view(-1))
-                wrong_feat = wrong_feat.view(batch_size, -1, opt.ninp)
-                batch_wrong_feat = batch_wrong_feat.view(batch_size, -1, opt.ninp)
-
-                # calculate the n pair loss.
-                d_loss, d_fake = critD(featD, real_feat, wrong_feat, batch_wrong_feat, \
-                                                        fake_feat, fake_diff_mask.detach())
-
-                netW_d.zero_grad()
-                netD.zero_grad()
-                netE_d.zero_grad()
-                d_loss.backward()
-                optimizerD.step()
-                err_d_fake_tmp += d_fake
-                optimizerD.step()
-
-                err_d += d_loss.data[0]
-                err_d_tmp += d_loss.data[0]
-            '''
+            
             ######################################
             # Discriminative trained generative model.
             ######################################
@@ -387,7 +331,7 @@ def train(epoch):
 
             ans_real_emb = netW_d(ans_target, format='index')
             #ans_wrong_emb = netW_d(wrong_ans_input, format='index')
-            ans_fake_emb = netW_d(fake_onehot, format='onehot') # not detach here.
+            ans_fake_emb = netW_d(fake_onehot, format='onehot')
             ans_fake_emb = ans_fake_emb.view(ans_length, -1, opt.ninp)
 
             real_hidden = repackage_hidden(real_hidden, batch_size)
@@ -396,11 +340,7 @@ def train(epoch):
 
             fake_feat = netD(ans_fake_emb, fake_idx, fake_hidden, vocab_size)
             real_feat = netD(ans_real_emb, ans_target, real_hidden, vocab_size)
-            #wrong_feat = netD(ans_wrong_emb, wrong_ans_input, wrong_hidden)
-            #batch_wrong_feat = wrong_feat.index_select(0, batch_sample_idx.view(-1))
 
-            #wrong_feat = wrong_feat.view(batch_size, -1, opt.ninp)
-            #batch_wrong_feat = batch_wrong_feat.view(batch_size, -1, opt.ninp)
             d_g_loss, g_fake = critG(featD, real_feat, fake_feat)#, fake_diff_mask.detach())
 
             netW_g.zero_grad()
@@ -420,7 +360,7 @@ def train(epoch):
         loss_store.append({'iter':i, 'err_lm':err_lm_tmp/10, 'err_d':err_d_tmp/10, 'err_g':err_g_tmp/10, \
                             'd_fake': err_d_fake_tmp/10, 'g_fake':err_g_fake_tmp/10})
 
-        if i % 2 == 0:
+        if i % 20 == 0:
             print ('Epoch:%d %d/%d, err_lm %4f, err_d %4f, err_g %4f, d_fake %4f, g_fake %4f' \
                 % (epoch, i, len(dataloader), err_lm_tmp/10, err_d_tmp/10, err_g_tmp/10, err_d_fake_tmp/10, \
                     err_g_fake_tmp/10))
@@ -450,8 +390,6 @@ def val():
     hist_hidden2 = netE_g.init_hidden(opt.batchSize)
 
     opt_hidden = netD.init_hidden(opt.batchSize)
-
-    bar = progressbar.ProgressBar(maxval=len(dataloader_val))#len(dataloader))
     data_iter_val = iter(dataloader_val)
 
     count = 0
@@ -553,7 +491,11 @@ def val():
             rank_D += list(rank.view(-1).data.cpu().numpy())
 
         i += 1
-        bar.update(i)
+
+
+
+
+
 
     return rank_G, rank_D
 
