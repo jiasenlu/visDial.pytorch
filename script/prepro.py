@@ -38,7 +38,7 @@ def tokenize_data(data):
     return ques_toks, ans_toks, caption_toks
 
 def build_vocab(data, ques_toks, ans_toks, caption_toks, params):
-    count_thr = args.word_count_threshold
+    count_thr = params.word_count_threshold
     
     i = 0
     counts = {}
