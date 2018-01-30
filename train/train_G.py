@@ -62,6 +62,7 @@ parser.add_argument('--ninp', type=int, default=300, help='size of word embeddin
 parser.add_argument('--nhid', type=int, default=512, help='humber of hidden units per layer')
 parser.add_argument('--nlayers', type=int, default=1, help='number of layers')
 parser.add_argument('--dropout', type=int, default=0.5, help='number of layers')
+parser.add_argument('--mos', action='store_true', help='whether to use Mixture of Softmaxes layer')
 parser.add_argument('--clip', type=float, default=5, help='gradient clipping')
 parser.add_argument('--margin', type=float, default=2, help='number of epochs to train for')
 
@@ -131,7 +132,7 @@ img_feat_size = opt.conv_feat_size
 netE = _netE(opt.model, opt.ninp, opt.nhid, opt.nlayers, opt.dropout, img_feat_size)
 
 netW = model._netW(vocab_size, opt.ninp, opt.dropout)
-netG = _netG(opt.model, vocab_size, opt.ninp, opt.nhid, opt.nlayers, opt.dropout)
+netG = _netG(opt.model, vocab_size, opt.ninp, opt.nhid, opt.nlayers, opt.dropout, opt.mos)
 critG = model.LMCriterion()
 sampler = model.gumbel_sampler()
 
@@ -213,7 +214,7 @@ def train(epoch):
             average_loss = 0
             count = 0
 
-    return average_loss
+    return average_loss, lr
 
 
 def val():

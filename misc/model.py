@@ -98,6 +98,36 @@ class  LMCriterion(nn.Module):
         loss = -torch.sum(out) # get the average loss.
         return loss
 
+
+class mixture_of_softmaxes(torch.nn.Module):
+    """
+    Breaking the Softmax Bottleneck: A High-Rank RNN Language Model (ICLR 2018)    
+    """
+    def __init__(self, nhid, n_experts, ntoken):
+
+        super(mixture_of_softmaxes, self).__init__()
+        
+        self.nhid=nhid
+        self.ntoken=ntoken
+        self.n_experts=n_experts
+        
+        self.prior = nn.Linear(nhid, n_experts, bias=False)
+        self.latent = nn.Sequential(nn.Linear(nhid, n_experts*nhid), nn.Tanh())
+        self.decoder = nn.Linear(nhid, ntoken)
+   
+    def forward(self, x):
+        
+        latent = self.latent(x)
+        logit = self.decoder(latent.view(-1, self.nhid))
+
+        prior_logit = self.prior(x).view(-1, self.n_experts)
+        prior = nn.functional.softmax(prior_logit)
+
+        prob = nn.functional.softmax(logit.view(-1, self.ntoken)).view(-1, self.n_experts, self.ntoken)
+        prob = (prob * prior.unsqueeze(2).expand_as(prob)).sum(1)
+        
+        return prob
+
 class nPairLoss(nn.Module):
     """
     Given the right, fake, wrong, wrong_sampled embedding, use the N Pair Loss
