@@ -9,13 +9,15 @@ from misc.share_Linear import share_Linear
 from misc.utils import l2_norm
 
 class _netG(nn.Module):
-    def __init__(self, rnn_type, ntoken, ninp, nhid, nlayers, dropout):
+    def __init__(self, rnn_type, ntoken, ninp, nhid, nlayers, dropout,mos):
         super(_netG, self).__init__()
         self.rnn = getattr(nn, rnn_type)(ninp, nhid, nlayers, dropout=dropout)
 
         self.rnn_type = rnn_type
         self.nhid = nhid
         self.nlayers = nlayers
+        self.mos_flag = mos
+        self.mos_layer = mixture_of_softmaxes(nhid, 5, ntoken + 1)
         self.decoder = nn.Linear(nhid, ntoken+1)
         self.d = dropout
         self.beta = 3
@@ -29,8 +31,15 @@ class _netG(nn.Module):
     def forward(self, emb, hidden):
         output, hidden = self.rnn(emb, hidden)
         output = F.dropout(output, self.d, training=self.training)
-        decoded = self.decoder(output.view(output.size(0)*output.size(1), output.size(2)))
-        logprob = F.log_softmax(self.beta * decoded)
+
+        if self.mos_flag:
+            decoded = self.mos_layer(output.view(
+                output.size(0) * output.size(1), output.size(2)))
+            logprob = torch.log(self.beta * decoded)
+        else:
+            decoded = self.decoder(output.view(
+                output.size(0) * output.size(1), output.size(2)))
+            logprob = F.log_softmax(self.beta * decoded)
 
         return logprob, hidden
 
@@ -134,8 +143,15 @@ class _netG(nn.Module):
                 output, state = self.rnn(xt, state)
 
                 output = F.dropout(output, self.d, training=self.training)
-                decoded = self.decoder(output.view(output.size(0)*output.size(1), output.size(2)))
-                logprobs = F.log_softmax(self.beta * decoded)
+
+		        if self.mos_flag:
+		            decoded = self.mos_layer(output.view(
+		                output.size(0) * output.size(1), output.size(2)))
+		            logprob = torch.log(self.beta * decoded)
+		        else:
+		            decoded = self.decoder(output.view(
+		                output.size(0) * output.size(1), output.size(2)))
+		            logprob = F.log_softmax(self.beta * decoded)
 
             self.done_beams[k] = sorted(self.done_beams[k], key=lambda x: -x['p'])
             seq[:, k] = self.done_beams[k][0]['seq'] # the first beam has highest cumulative score
@@ -185,7 +201,14 @@ class _netG(nn.Module):
             output, state = self.rnn(xt, state)
 
             output = F.dropout(output, self.d, training=self.training)
-            decoded = self.decoder(output.view(output.size(0)*output.size(1), output.size(2)))
-            logprobs = F.log_softmax(self.beta * decoded)
+
+	        if self.mos_flag:
+	            decoded = self.mos_layer(output.view(
+	                output.size(0) * output.size(1), output.size(2)))
+	            logprob = torch.log(self.beta * decoded)
+	        else:
+	            decoded = self.decoder(output.view(
+	                output.size(0) * output.size(1), output.size(2)))
+	            logprob = F.log_softmax(self.beta * decoded)
 
         return torch.cat([_.unsqueeze(1) for _ in seq], 1), torch.cat([_.unsqueeze(1) for _ in seqLogprobs], 1)
